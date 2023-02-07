@@ -1,10 +1,9 @@
-# godot-cpp example / integration test
+# godot-solana-client
 
-This project is used to perform integration testing of the godot-cpp
-extension, to validate PRs and implemented APIs.
-
-It can also be used as a quick example of how to set up a godot-cpp
-project, both on the C++ side and in the Godot project itself.
+This plugin aims to extend the godot engine with Solana RPC client
+functionality. The project is in an early stage, the main focus on this plugin
+is on the android target. I have full solana-client coverage for Linux and
+Windows on a separate private repository. I will move this code to here.
 
 ## License
 
