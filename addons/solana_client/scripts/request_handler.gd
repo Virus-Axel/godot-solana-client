@@ -15,7 +15,9 @@ signal error(error_code: String, error_description: String)
 func _ready():
 	var random_number: PackedInt64Array = rand_from_seed(Time.get_unix_time_from_system())
 	unique_id = random_number[0]
-	get_account_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX", "finalized", 0)
+	print(await get_block_height())
+	print(await get_balance("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
+	print(await get_account_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
 
 
 func parse_response_data(data: Array) -> Variant:
@@ -81,17 +83,28 @@ func parse_response_data(data: Array) -> Variant:
 		# Validate response data
 		if not response_data.has("result"):
 			emit_signal("error", "INTERNAL", "Unexpected response data.")
+		if typeof(response_data['result']) != TYPE_DICTIONARY:
+			return response_data['result']
 		if not response_data['result'].has("value"):
-			emit_signal("error", "INTERNAL", "Unexpected response data.")
+			return response_data['result']
 		else:
-			
 			return response_data['result']['value']
 
 	# Error paths end up here, return empty Dictionary
 	return {}
 
 
-func create_request_body(method, params):
+func send_rpc_request(method: String, params: Array) -> Variant:
+	var body = create_request_body(method, params)
+	
+	var error = request(url, HTTP_HEADERS, HTTPClient.METHOD_POST, body)
+	if error != OK:
+		push_error("An error occurred in the HTTP request.")
+		
+	return parse_response_data(await request_completed)
+
+
+func create_request_body(method: String, params: Array) -> String:
 	var dict := {
 		"id": unique_id,
 		"jsonrpc": "2.0",
@@ -102,26 +115,29 @@ func create_request_body(method, params):
 	return body
 
 
-func get_account_info(account: String, commitment: String = "finalized", data_offset: int = 0, data_length: int = MAX_GODOT_INT):
+func get_account_info(account: String, commitment: String = "finalized", data_offset: int = 0, data_length: int = MAX_GODOT_INT) -> Dictionary:
 	var config := {
 		"encoding": "base64",
 		"commitment": commitment,
 	}
 	if data_offset != 0 or data_length != MAX_GODOT_INT:
 		config.merge({"dataSlice": {"offset": data_offset, "length": data_length}})
-	var body = create_request_body("getAccountInfo", [account, config])
 	
-	var error = request(url, HTTP_HEADERS, HTTPClient.METHOD_POST, body)
-	if error != OK:
-		push_error("An error occurred in the HTTP request.")
-		
-	var result_body: Dictionary = parse_response_data(await request_completed)
-	print(result_body)
-	
+	return await send_rpc_request("getAccountInfo", [account, config])
 
 
-func get_balance(account: String):
-	pass
+func get_balance(account: String, commitment: String = "finalized") -> float:
+	var config = {
+		"commitment": commitment
+	}
+	return await send_rpc_request("getBalance", [account, config])
+
+
+func get_block_height(commitment: String = "finalized") -> int:
+	var config = {
+		"commitment": commitment
+	}
+	return await send_rpc_request("getBlockHeight", [config])
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
