@@ -7,6 +7,9 @@ const mapping := [
 	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "+", "/", "=",
 ]
 
+static func encode(bytes: PackedByteArray) -> String:
+	return ""
+
 static func decode(str: String) -> PackedByteArray:
 	var ret := PackedByteArray()
 	var cutoff: int = 0

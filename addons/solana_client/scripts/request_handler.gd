@@ -15,9 +15,16 @@ signal error(error_code: String, error_description: String)
 func _ready():
 	var random_number: PackedInt64Array = rand_from_seed(Time.get_unix_time_from_system())
 	unique_id = random_number[0]
-	print(await get_block_height())
-	print(await get_balance("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
-	print(await get_account_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
+	#print(await get_block_height())
+	#print(await get_balance("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
+	#print(await get_account_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
+	#print(await get_block_production("finalized", "", 186173845, 186173846))
+	#print(await get_block_commitment(7))
+	#print(await get_blocks(124091904, 124091904 + 100))
+	#print(await get_blocks_with_limit(799279, 200))
+	#print(await get_block_time(146295254))
+	#print(await get_cluster_nodes())
+	print(await get_epoch_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
 
 
 func parse_response_data(data: Array) -> Variant:
@@ -30,7 +37,6 @@ func parse_response_data(data: Array) -> Variant:
 	
 	# TODO: Fix this when done testing
 	elif data[1] != 200:
-		print(data[1])
 		assert(false)
 		
 		emit_signal("error", "HTTP_ERROR", "An unknown error ocurred.")
@@ -79,23 +85,27 @@ func parse_response_data(data: Array) -> Variant:
 		json.parse(response_body.get_string_from_utf8())
 		
 		var response_data: Dictionary = json.get_data()
+		print(response_data)
 		
 		# Validate response data
-		if not response_data.has("result"):
+		if response_data.has("error"):
+			emit_signal("error", "INTERNAL", response_data['error']['message'])
+		elif not response_data.has("result"):
 			emit_signal("error", "INTERNAL", "Unexpected response data.")
-		if typeof(response_data['result']) != TYPE_DICTIONARY:
+		elif typeof(response_data['result']) != TYPE_DICTIONARY:
 			return response_data['result']
-		if not response_data['result'].has("value"):
+		elif not response_data['result'].has("value"):
 			return response_data['result']
 		else:
 			return response_data['result']['value']
 
 	# Error paths end up here, return empty Dictionary
-	return {}
+	return null
 
 
 func send_rpc_request(method: String, params: Array) -> Variant:
-	var body = create_request_body(method, params)
+	var body: String = create_request_body(method, params)
+	print(body)
 	
 	var error = request(url, HTTP_HEADERS, HTTPClient.METHOD_POST, body)
 	if error != OK:
@@ -105,7 +115,7 @@ func send_rpc_request(method: String, params: Array) -> Variant:
 
 
 func create_request_body(method: String, params: Array) -> String:
-	var dict := {
+	var dict: Dictionary = {
 		"id": unique_id,
 		"jsonrpc": "2.0",
 		"method": method,
@@ -115,8 +125,8 @@ func create_request_body(method: String, params: Array) -> String:
 	return body
 
 
-func get_account_info(account: String, commitment: String = "finalized", data_offset: int = 0, data_length: int = MAX_GODOT_INT) -> Dictionary:
-	var config := {
+func get_account_info(account: String, commitment: String = "finalized", data_offset: int = 0, data_length: int = MAX_GODOT_INT) -> Variant:
+	var config: Dictionary = {
 		"encoding": "base64",
 		"commitment": commitment,
 	}
@@ -126,27 +136,163 @@ func get_account_info(account: String, commitment: String = "finalized", data_of
 	return await send_rpc_request("getAccountInfo", [account, config])
 
 
-func get_balance(account: String, commitment: String = "finalized") -> float:
-	var config = {
+func get_balance(account: String, commitment: String = "finalized") -> Variant:
+	var config: Dictionary = {
 		"commitment": commitment
 	}
 	return await send_rpc_request("getBalance", [account, config])
 
 
-func get_block_height(commitment: String = "finalized") -> int:
-	var config = {
+func get_block_height(commitment: String = "finalized") -> Variant:
+	var config: Dictionary = {
 		"commitment": commitment
 	}
 	return await send_rpc_request("getBlockHeight", [config])
 
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta):
-	pass
+func get_block_production(commitment: String = "finalized", identity: String = "", first_slot: int = 0, last_slot: int = -1) -> Variant:
+	var config: Dictionary = {
+		"commitment": commitment
+	}
+	if not identity.is_empty():
+		config.merge({"identity": identity})
+	if last_slot != -1:
+		config.merge({"range": {
+			"firstSlot": first_slot,
+			"lastSlot": last_slot,
+		}})
+	elif first_slot != 0:
+		config.merge({"firstSlot": first_slot})
+	
+	return await send_rpc_request("getBlockProduction", [config])
 
 
-func _on_request_completed(result, response_code, headers, body):
-	var json = JSON.new()
-	json.parse(body.get_string_from_utf8())
-	print(json.get_data())
+func get_block_commitment(block_number: int) -> Variant:
+	return await send_rpc_request("getBlockCommitment", [block_number])
 
+
+func get_blocks(start_block, end_block = -1, commitment = "finalized"):
+	var config: Array = [start_block]
+	if end_block != -1:
+		config.push_back(end_block)
+	config.push_back({"commitment": commitment,})
+
+	return await send_rpc_request("getBlocks", config)
+
+
+func get_blocks_with_limit(start_block: int, limit: int = -1, commitment: String = "finalized"):
+	var config: Array = [start_block]
+	if limit != -1:
+		config.push_back(limit)
+	config.push_back({"commitment": commitment,})
+
+	return await send_rpc_request("getBlocksWithLimit", config)
+
+
+func get_block_time(block_number: int) -> Variant:
+	return await send_rpc_request("getBlockTime", [block_number])
+
+
+func get_cluster_nodes() -> Variant:
+	return await send_rpc_request("getClusterNodes", [])
+
+
+func get_epoch_info(commitment: String = "finalized") -> Variant:
+	var config: Dictionary = {"commitment": commitment}
+	return await send_rpc_request("getEpochInfo", [config])
+
+
+func get_epoch_schedule() -> Variant:
+	return await send_rpc_request("getEpochSchedule", [])
+
+
+func get_fee_for_message(message: String, is_message_encoded := true) -> Variant:
+	if not is_message_encoded:
+		return await send_rpc_request("getFeeForMessage", [bs64.encode(message.to_utf8_buffer())])
+	else:
+		return await send_rpc_request("getFeeForMessage", [message])
+
+
+func get_first_available_block() -> Variant:
+	return await send_rpc_request("getFirstAvailableBlock", [])
+
+
+func get_genesis_hash() -> Variant:
+	return await send_rpc_request("getGenesisHash", [])
+
+
+func get_health() -> Variant:
+	return await send_rpc_request("getHealth", [])
+
+
+func get_highest_snapshot_slot() -> Variant:
+	return await send_rpc_request("getHighestSnapshotSlot", [])
+
+
+func get_identity() -> Variant:
+	return await send_rpc_request("getIdentity", [])
+
+
+func get_inflation_governor(commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("getInflationGovernor", [{"commitment": commitment}])
+
+
+func get_inflation_rate() -> Variant:
+	return await send_rpc_request("getInflationRate", [])
+	
+
+func get_inflation_reward(query_addresses: Array = [], commitment: String = "finalized", epoch: int = -1) -> Variant:
+	var config: Dictionary = {
+		"commitment": commitment
+	}
+	if epoch != -1:
+		config.merge({"epoch": epoch})
+	if query_addresses.is_empty():
+		return await send_rpc_request("getInflationReward", [config])
+	else:
+		return await send_rpc_request("getInflationReward", [query_addresses, config])
+
+
+func get_largest_accounts(commitment: String = "finalized", filter: String = "") -> Variant:
+	var config: Dictionary = {
+		"commitment": commitment
+	}
+	if filter != "":
+		config.merge({"filter": filter})
+
+	return await send_rpc_request("getLargestAccounts", [config])
+
+
+func get_latest_blockhash(commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("getLatestBlockhash", [{"commitment": commitment}])
+
+
+func get_leader_schedule(commitment: String = "finalized", identity: String = "", slot: int = -1) -> Variant:
+	var config = {"commitment": commitment}
+	if identity != "":
+		config.merge({"identity": identity})
+	
+	if slot == -1:
+		return await send_rpc_request("getLeaderSchedule", [config])
+	else:
+		return await send_rpc_request("getLeaderSchedule", [slot, config])
+
+
+func get_max_retransmit_slot() -> Variant:
+	return await send_rpc_request("getMaxRetransmitSlot", [])
+	
+
+func get_max_shred_insert_slot() -> Variant:
+	return await send_rpc_request("getMaxShredInsertSlot", [])
+
+
+func get_minimum_balance_for_rent_exemption(size: int = -1, commitment: String = "finalized") -> Variant:
+	if size != -1:
+		return await send_rpc_request("getMinimumBalanceForRentExemption", [size, {"commitment": commitment}])
+	else:
+		return await send_rpc_request("getMinimumBalanceForRentExemption", [{"commitment": commitment}])
+
+func _on_error(error_code, error_description):
+	print("Error: ", error_code)
+	print(error_description)
+	pass # Replace with function body.
