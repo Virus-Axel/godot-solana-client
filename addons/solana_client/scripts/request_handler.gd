@@ -6,6 +6,7 @@ const HTTP_HEADERS: PackedStringArray = ["Content-Type: application/json", "Acce
 const MAX_GODOT_INT: int = 9223372036854775807
 
 @export var url: String = "https://api.testnet.solana.com"
+@export var commitment: String = "finalized"
 
 var unique_id: int = 0
 
@@ -24,7 +25,7 @@ func _ready():
 	#print(await get_blocks_with_limit(799279, 200))
 	#print(await get_block_time(146295254))
 	#print(await get_cluster_nodes())
-	print(await get_epoch_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
+	print(await get_epoch_info())
 
 
 func parse_response_data(data: Array) -> Variant:
@@ -106,7 +107,7 @@ func parse_response_data(data: Array) -> Variant:
 func send_rpc_request(method: String, params: Array) -> Variant:
 	var body: String = create_request_body(method, params)
 	print(body)
-	
+
 	var error = request(url, HTTP_HEADERS, HTTPClient.METHOD_POST, body)
 	if error != OK:
 		push_error("An error occurred in the HTTP request.")
@@ -125,7 +126,7 @@ func create_request_body(method: String, params: Array) -> String:
 	return body
 
 
-func get_account_info(account: String, commitment: String = "finalized", data_offset: int = 0, data_length: int = MAX_GODOT_INT) -> Variant:
+func get_account_info(account: String, data_offset: int = 0, data_length: int = MAX_GODOT_INT) -> Variant:
 	var config: Dictionary = {
 		"encoding": "base64",
 		"commitment": commitment,
@@ -136,21 +137,21 @@ func get_account_info(account: String, commitment: String = "finalized", data_of
 	return await send_rpc_request("getAccountInfo", [account, config])
 
 
-func get_balance(account: String, commitment: String = "finalized") -> Variant:
+func get_balance(account: String) -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment
 	}
 	return await send_rpc_request("getBalance", [account, config])
 
 
-func get_block_height(commitment: String = "finalized") -> Variant:
+func get_block_height() -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment
 	}
 	return await send_rpc_request("getBlockHeight", [config])
 
 
-func get_block_production(commitment: String = "finalized", identity: String = "", first_slot: int = 0, last_slot: int = -1) -> Variant:
+func get_block_production(identity: String = "", first_slot: int = 0, last_slot: int = -1) -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment
 	}
@@ -171,7 +172,7 @@ func get_block_commitment(block_number: int) -> Variant:
 	return await send_rpc_request("getBlockCommitment", [block_number])
 
 
-func get_blocks(start_block, end_block = -1, commitment = "finalized"):
+func get_blocks(start_block: int, end_block: int = -1):
 	var config: Array = [start_block]
 	if end_block != -1:
 		config.push_back(end_block)
@@ -180,7 +181,7 @@ func get_blocks(start_block, end_block = -1, commitment = "finalized"):
 	return await send_rpc_request("getBlocks", config)
 
 
-func get_blocks_with_limit(start_block: int, limit: int = -1, commitment: String = "finalized"):
+func get_blocks_with_limit(start_block: int, limit: int = -1):
 	var config: Array = [start_block]
 	if limit != -1:
 		config.push_back(limit)
@@ -197,7 +198,7 @@ func get_cluster_nodes() -> Variant:
 	return await send_rpc_request("getClusterNodes", [])
 
 
-func get_epoch_info(commitment: String = "finalized") -> Variant:
+func get_epoch_info() -> Variant:
 	var config: Dictionary = {"commitment": commitment}
 	return await send_rpc_request("getEpochInfo", [config])
 
@@ -233,7 +234,7 @@ func get_identity() -> Variant:
 	return await send_rpc_request("getIdentity", [])
 
 
-func get_inflation_governor(commitment: String = "finalized") -> Variant:
+func get_inflation_governor() -> Variant:
 	return await send_rpc_request("getInflationGovernor", [{"commitment": commitment}])
 
 
@@ -241,7 +242,7 @@ func get_inflation_rate() -> Variant:
 	return await send_rpc_request("getInflationRate", [])
 	
 
-func get_inflation_reward(query_addresses: Array = [], commitment: String = "finalized", epoch: int = -1) -> Variant:
+func get_inflation_reward(query_addresses: Array = [], epoch: int = -1) -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment
 	}
@@ -253,7 +254,7 @@ func get_inflation_reward(query_addresses: Array = [], commitment: String = "fin
 		return await send_rpc_request("getInflationReward", [query_addresses, config])
 
 
-func get_largest_accounts(commitment: String = "finalized", filter: String = "") -> Variant:
+func get_largest_accounts(filter: String = "") -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment
 	}
@@ -263,11 +264,11 @@ func get_largest_accounts(commitment: String = "finalized", filter: String = "")
 	return await send_rpc_request("getLargestAccounts", [config])
 
 
-func get_latest_blockhash(commitment: String = "finalized") -> Variant:
+func get_latest_blockhash() -> Variant:
 	return await send_rpc_request("getLatestBlockhash", [{"commitment": commitment}])
 
 
-func get_leader_schedule(commitment: String = "finalized", identity: String = "", slot: int = -1) -> Variant:
+func get_leader_schedule(identity: String = "", slot: int = -1) -> Variant:
 	var config = {"commitment": commitment}
 	if identity != "":
 		config.merge({"identity": identity})
@@ -286,14 +287,14 @@ func get_max_shred_insert_slot() -> Variant:
 	return await send_rpc_request("getMaxShredInsertSlot", [])
 
 
-func get_minimum_balance_for_rent_exemption(size: int = -1, commitment: String = "finalized") -> Variant:
+func get_minimum_balance_for_rent_exemption(size: int = -1) -> Variant:
 	if size != -1:
 		return await send_rpc_request("getMinimumBalanceForRentExemption", [size, {"commitment": commitment}])
 	else:
 		return await send_rpc_request("getMinimumBalanceForRentExemption", [{"commitment": commitment}])
 
 
-func get_multiple_accounts(accounts: Array = [], commitment: String = "finalized", offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
+func get_multiple_accounts(accounts: Array = [], offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment,
 		"encoding": "base64",
@@ -306,7 +307,7 @@ func get_multiple_accounts(accounts: Array = [], commitment: String = "finalized
 		return await send_rpc_request("getMultipleAccounts", [accounts, config])
 
 
-func get_program_accounts(program_id: String, commitment: String = "finalized", filters: Array = [], offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
+func get_program_accounts(program_id: String, filters: Array = [], offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment,
 		"encoding": "base64",
@@ -330,7 +331,7 @@ func get_recent_prioritization_fees(account_addresses: Array = []) -> Variant:
 		return await send_rpc_request("getRecentPrioritizationFees", [])
 
 
-func get_signatures_for_address(account: String, commitment: String = "finalized", limit: int = 1000, before: String = "", until: String = "") -> Variant:
+func get_signatures_for_address(account: String, limit: int = 1000, before: String = "", until: String = "") -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment,
 		"limit": limit,
@@ -350,11 +351,11 @@ func get_signature_statuses(signatures: Array = [], search_transaction_history :
 		return await send_rpc_request("getSignatureStatuses", [{"searchTransactionHistory": search_transaction_history}])
 
 
-func get_slot(commitment: String = "finalized") -> Variant:
+func get_slot() -> Variant:
 	return await send_rpc_request("getSlot", [{"commitment": commitment}])
 
 
-func get_slot_leader(commitment: String = "finalized") -> Variant:
+func get_slot_leader() -> Variant:
 	return await send_rpc_request("getSlotLeader", [{"commitment": commitment}])
 
 
@@ -365,14 +366,14 @@ func get_slot_leaders(start_slot: int = -1, limit: int = 10) -> Variant:
 		return await send_rpc_request("getSlotLeaders", [start_slot, limit])
 
 
-func get_stake_activation(stake_account: String, commitment: String = "finalized", epoch: int = -1) -> Variant:
+func get_stake_activation(stake_account: String, epoch: int = -1) -> Variant:
 	if epoch != -1:
 		return await send_rpc_request("getStakeActivation", [stake_account, {"commitment": commitment, "epoch": epoch}])
 	else:
 		return await send_rpc_request("getStakeActivation", [stake_account, {"commitment": commitment}])
 
 
-func get_stake_minimum_delegation(commitment: String = "finalized") -> Variant:
+func get_stake_minimum_delegation() -> Variant:
 	return await send_rpc_request("getStakeMinimumDelegation", [{"commitment": commitment}])
 
 
@@ -380,7 +381,7 @@ func get_supply(signatures: Array = [], exclude_non_circulating_accounts_list :=
 	return await send_rpc_request("getSupply", [{"excludeNonCirculatingAccountsList": exclude_non_circulating_accounts_list}])
 
 
-func get_token_account_balance(token_account: String, commitment: String = "finalized") -> Variant:
+func get_token_account_balance(token_account: String) -> Variant:
 	return await send_rpc_request("getTokenAccountBalance", [token_account, {"commitment": commitment}])
 
 
@@ -403,7 +404,7 @@ func create_filter(offset: int = -1, match_data: String = "", encoded: bool = tr
 	return ret
 
 
-func get_token_accounts_by_owner(deligate_account: String, mint_account: String = "", program_id: String = "", commitment: String = "finalized", offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
+func get_token_accounts_by_owner(deligate_account: String, mint_account: String = "", program_id: String = "", offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
 	var arg1: Dictionary = {}
 	var arg2: Dictionary = {
 		"commitment": commitment,
@@ -418,22 +419,22 @@ func get_token_accounts_by_owner(deligate_account: String, mint_account: String 
 	return await send_rpc_request("getTokenAccountsByOwner", [deligate_account, arg1, arg2])
 
 
-func get_token_largest_accounts(token_mint: String, commitment: String = "finalized") -> Variant:
+func get_token_largest_accounts(token_mint: String) -> Variant:
 	return await send_rpc_request("getTokenLargestAccounts", [token_mint, {"commitment": commitment}])
 
 
-func get_token_supply(token_mint: String, commitment: String = "finalized") -> Variant:
+func get_token_supply(token_mint: String) -> Variant:
 	return await send_rpc_request("getTokenSupply", [token_mint, {"commitment": commitment}])
 
 
-func get_transaction(token_mint: String, commitment: String = "finalized", max_supported_transaction_version: int = -1) -> Variant:
+func get_transaction(token_mint: String, max_supported_transaction_version: int = -1) -> Variant:
 	if max_supported_transaction_version != -1:
 		return await send_rpc_request("getTransaction", [token_mint, {"commitment": commitment, "maxSupportedTransactionVersion": max_supported_transaction_version}])
 	else:
 		return await send_rpc_request("getTransaction", [token_mint, {"commitment": commitment}])
 
 
-func get_transaction_count(commitment: String = "finalized") -> Variant:
+func get_transaction_count() -> Variant:
 	return await send_rpc_request("getTransactionCount", [{"commitment": commitment}])
 
 
@@ -441,7 +442,7 @@ func get_version() -> Variant:
 	return await send_rpc_request("getVersion", [])
 
 
-func get_vote_accounts(commitment: String = "finalized", vote_pubkey: String = "", keep_unstaked_delinquents = false, delinquent_slot_distance = -1) -> Variant:
+func get_vote_accounts(vote_pubkey: String = "", keep_unstaked_delinquents = false, delinquent_slot_distance = -1) -> Variant:
 	var config = {
 		"commitment": commitment,
 		"keepUnstakedDelinquents": keep_unstaked_delinquents,
@@ -453,7 +454,7 @@ func get_vote_accounts(commitment: String = "finalized", vote_pubkey: String = "
 	return await send_rpc_request("getVoteAccounts", [config])
 
 
-func is_blockhash_valid(commitment: String = "finalized") -> Variant:
+func is_blockhash_valid() -> Variant:
 	return await send_rpc_request("isBlockhashValid", [{"commitment": commitment}])
 
 
@@ -461,11 +462,11 @@ func minimum_ledger_slot() -> Variant:
 	return await send_rpc_request("minimumLedgerSlot", [])
 
 
-func request_airdrop(account: String, amount: int, commitment: String = "finalized") -> Variant:
+func request_airdrop(account: String, amount: int) -> Variant:
 	return await send_rpc_request("requestAirdrop", [account, amount, {"commitment": commitment}])
 
 
-func send_transaction(transaction: String, encoded := true, commitment: String = "finalized", skip_preflight := false, preflight_commitment: String = "finalized", max_retries: int = -1) -> Variant:
+func send_transaction(transaction: String, encoded := true, skip_preflight := false, preflight_commitment: String = "finalized", max_retries: int = -1) -> Variant:
 	var config = {
 		"commitment": commitment,
 		"encoding": "base64",
@@ -480,8 +481,26 @@ func send_transaction(transaction: String, encoded := true, commitment: String =
 	return await send_rpc_request("sendTransaction", [encoded_transaction, config])
 
 
-func simulate_transaction(account: String, amount: int, commitment: String = "finalized") -> Variant:
-	return await send_rpc_request("simulateTransaction", [account, amount, {"commitment": commitment}])
+func simulate_transaction(transaction: String, encoded := true, sig_verify := false, replace_recent_blockhash := false, return_accounts: Array = []) -> Variant:
+	var config: Dictionary = {
+		"commitment": commitment,
+		"sigVerify": sig_verify,
+		"replaceRecentBlockhash": replace_recent_blockhash,
+		"encoding": "base64",
+	}
+	if return_accounts:
+		config.merge({
+			"accounts": {
+				"addresses": return_accounts,
+				"encoding": "base64",
+			}
+		})
+	
+	return await send_rpc_request("simulateTransaction", [transaction, config])
+
+
+func set_commitment(new_commitment: String):
+	commitment = new_commitment
 
 
 # TODO: Remove before release
