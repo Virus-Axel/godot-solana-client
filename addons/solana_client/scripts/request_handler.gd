@@ -403,6 +403,87 @@ func create_filter(offset: int = -1, match_data: String = "", encoded: bool = tr
 	return ret
 
 
+func get_token_accounts_by_owner(deligate_account: String, mint_account: String = "", program_id: String = "", commitment: String = "finalized", offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
+	var arg1: Dictionary = {}
+	var arg2: Dictionary = {
+		"commitment": commitment,
+		"encoding": "base64",
+	}
+	if not mint_account.is_empty():
+		arg1 = {"mint": mint_account}
+	if not program_id.is_empty():
+		arg1.merge({"programId": program_id})
+	if length != MAX_GODOT_INT or offset != 0:
+		arg2.merge({"dataSlice": {"offset": offset, "length": length}})
+	return await send_rpc_request("getTokenAccountsByOwner", [deligate_account, arg1, arg2])
+
+
+func get_token_largest_accounts(token_mint: String, commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("getTokenLargestAccounts", [token_mint, {"commitment": commitment}])
+
+
+func get_token_supply(token_mint: String, commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("getTokenSupply", [token_mint, {"commitment": commitment}])
+
+
+func get_transaction(token_mint: String, commitment: String = "finalized", max_supported_transaction_version: int = -1) -> Variant:
+	if max_supported_transaction_version != -1:
+		return await send_rpc_request("getTransaction", [token_mint, {"commitment": commitment, "maxSupportedTransactionVersion": max_supported_transaction_version}])
+	else:
+		return await send_rpc_request("getTransaction", [token_mint, {"commitment": commitment}])
+
+
+func get_transaction_count(commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("getTransactionCount", [{"commitment": commitment}])
+
+
+func get_version() -> Variant:
+	return await send_rpc_request("getVersion", [])
+
+
+func get_vote_accounts(commitment: String = "finalized", vote_pubkey: String = "", keep_unstaked_delinquents = false, delinquent_slot_distance = -1) -> Variant:
+	var config = {
+		"commitment": commitment,
+		"keepUnstakedDelinquents": keep_unstaked_delinquents,
+	}
+	if not vote_pubkey.is_empty():
+		config.merge({"votePubkey": vote_pubkey})
+	if delinquent_slot_distance != -1:
+		config.merge({"delinquentSlotDistance": delinquent_slot_distance})
+	return await send_rpc_request("getVoteAccounts", [config])
+
+
+func is_blockhash_valid(commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("isBlockhashValid", [{"commitment": commitment}])
+
+
+func minimum_ledger_slot() -> Variant:
+	return await send_rpc_request("minimumLedgerSlot", [])
+
+
+func request_airdrop(account: String, amount: int, commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("requestAirdrop", [account, amount, {"commitment": commitment}])
+
+
+func send_transaction(transaction: String, encoded := true, commitment: String = "finalized", skip_preflight := false, preflight_commitment: String = "finalized", max_retries: int = -1) -> Variant:
+	var config = {
+		"commitment": commitment,
+		"encoding": "base64",
+		"skipPreflight": skip_preflight,
+		"preflight_commitment": preflight_commitment,
+	}
+	if max_retries != -1:
+		config.merge({"maxRetries": max_retries})
+	var encoded_transaction: String = transaction
+	if not encoded:
+		encoded_transaction = bs64.encode(transaction.to_utf8_buffer())
+	return await send_rpc_request("sendTransaction", [encoded_transaction, config])
+
+
+func simulate_transaction(account: String, amount: int, commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("simulateTransaction", [account, amount, {"commitment": commitment}])
+
+
 # TODO: Remove before release
 func _on_error(error_code, error_description):
 	print("Error: ", error_code)
