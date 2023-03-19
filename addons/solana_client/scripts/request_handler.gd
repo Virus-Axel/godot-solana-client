@@ -292,6 +292,118 @@ func get_minimum_balance_for_rent_exemption(size: int = -1, commitment: String =
 	else:
 		return await send_rpc_request("getMinimumBalanceForRentExemption", [{"commitment": commitment}])
 
+
+func get_multiple_accounts(accounts: Array = [], commitment: String = "finalized", offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
+	var config: Dictionary = {
+		"commitment": commitment,
+		"encoding": "base64",
+	}
+	if length != MAX_GODOT_INT or offset != 0:
+		config.merge({"dataSlice": {"offset": offset, "length": length}})
+	if accounts.is_empty():
+		return await send_rpc_request("getMultipleAccounts", [config])
+	else:
+		return await send_rpc_request("getMultipleAccounts", [accounts, config])
+
+
+func get_program_accounts(program_id: String, commitment: String = "finalized", filters: Array = [], offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
+	var config: Dictionary = {
+		"commitment": commitment,
+		"encoding": "base64",
+	}
+	if length != MAX_GODOT_INT or offset != 0:
+		config.merge({"dataSlice": {"offset": offset, "length": length}})
+	if filters:
+		config.merge({"filters": filters})
+		
+	return await send_rpc_request("getProgramAccounts", [config])
+
+
+func get_recent_performance_samples(limit: int) -> Variant:
+	return await send_rpc_request("getRecentPerformanceSamples", [limit])
+
+
+func get_recent_prioritization_fees(account_addresses: Array = []) -> Variant:
+	if account_addresses:
+		return await send_rpc_request("getRecentPrioritizationFees", [account_addresses])
+	else:
+		return await send_rpc_request("getRecentPrioritizationFees", [])
+
+
+func get_signatures_for_address(account: String, commitment: String = "finalized", limit: int = 1000, before: String = "", until: String = "") -> Variant:
+	var config: Dictionary = {
+		"commitment": commitment,
+		"limit": limit,
+	}
+	if not before.is_empty():
+		config.merge({"before": before})
+	if not until.is_empty():
+		config.merge({"until": until})
+		
+	return await send_rpc_request("getSignaturesForAddress", [account, config])
+
+
+func get_signature_statuses(signatures: Array = [], search_transaction_history := false) -> Variant:
+	if signatures:
+		return await send_rpc_request("getSignatureStatuses", [signatures, {"searchTransactionHistory": search_transaction_history}])
+	else:
+		return await send_rpc_request("getSignatureStatuses", [{"searchTransactionHistory": search_transaction_history}])
+
+
+func get_slot(commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("getSlot", [{"commitment": commitment}])
+
+
+func get_slot_leader(commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("getSlotLeader", [{"commitment": commitment}])
+
+
+func get_slot_leaders(start_slot: int = -1, limit: int = 10) -> Variant:
+	if start_slot != -1:
+		return await send_rpc_request("getSlotLeaders", [])
+	else:
+		return await send_rpc_request("getSlotLeaders", [start_slot, limit])
+
+
+func get_stake_activation(stake_account: String, commitment: String = "finalized", epoch: int = -1) -> Variant:
+	if epoch != -1:
+		return await send_rpc_request("getStakeActivation", [stake_account, {"commitment": commitment, "epoch": epoch}])
+	else:
+		return await send_rpc_request("getStakeActivation", [stake_account, {"commitment": commitment}])
+
+
+func get_stake_minimum_delegation(commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("getStakeMinimumDelegation", [{"commitment": commitment}])
+
+
+func get_supply(signatures: Array = [], exclude_non_circulating_accounts_list := false) -> Variant:
+	return await send_rpc_request("getSupply", [{"excludeNonCirculatingAccountsList": exclude_non_circulating_accounts_list}])
+
+
+func get_token_account_balance(token_account: String, commitment: String = "finalized") -> Variant:
+	return await send_rpc_request("getTokenAccountBalance", [token_account, {"commitment": commitment}])
+
+
+func create_filter(offset: int = -1, match_data: String = "", encoded: bool = true, data_size: int = -1):
+	var ret: Dictionary = {}
+	
+	if offset != -1:
+		var encoded_data = match_data
+		if not encoded:
+			encoded_data = bs64.encode(match_data.to_utf8_buffer())
+		ret.merge({"memcmp": {
+			"offset": offset,
+			"bytes": encoded_data,
+			"encoding": "base64",
+		}})
+	
+	if data_size != -1:
+		ret.merge({"dataSize": data_size})
+	
+	return ret
+
+
+# TODO: Remove before release
 func _on_error(error_code, error_description):
 	print("Error: ", error_code)
 	print(error_description)
