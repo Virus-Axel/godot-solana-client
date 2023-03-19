@@ -36,10 +36,7 @@ func parse_response_data(data: Array) -> Variant:
 	elif data[1] == 0:
 		emit_signal("error", "NO_RESPONSE", "No response from a server at " + url)
 	
-	# TODO: Fix this when done testing
 	elif data[1] != 200:
-		assert(false)
-		
 		emit_signal("error", "HTTP_ERROR", "An unknown error ocurred.")
 
 	# Check for RPC error response code
@@ -499,8 +496,12 @@ func simulate_transaction(transaction: String, encoded := true, sig_verify := fa
 	return await send_rpc_request("simulateTransaction", [transaction, config])
 
 
-func set_commitment(new_commitment: String):
+func set_commitment(new_commitment: String) -> void:
 	commitment = new_commitment
+
+
+func get_commitment() -> String:
+	return commitment
 
 
 # TODO: Remove before release
