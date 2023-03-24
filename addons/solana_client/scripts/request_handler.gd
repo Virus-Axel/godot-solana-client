@@ -25,6 +25,7 @@ func _ready():
 	#print(await get_blocks_with_limit(799279, 200))
 	#print(await get_block_time(146295254))
 	#print(await get_cluster_nodes())
+	print(bs64.decode(bs64.encode("hellooo".to_utf8_buffer())))
 	print(await get_epoch_info())
 
 
@@ -502,10 +503,3 @@ func set_commitment(new_commitment: String) -> void:
 
 func get_commitment() -> String:
 	return commitment
-
-
-# TODO: Remove before release
-func _on_error(error_code, error_description):
-	print("Error: ", error_code)
-	print(error_description)
-	pass # Replace with function body.
