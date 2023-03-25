@@ -9,7 +9,6 @@ const MAX_GODOT_INT: int = 9223372036854775807
 
 
 @export var unique_id: int
-@export var url: String = "https://api.testnet.solana.com"
 @export var commitment: String = "finalized"
 
 @export var synchronous := true:
@@ -24,6 +23,7 @@ const MAX_GODOT_INT: int = 9223372036854775807
 
 
 var minimum_context_slot: int = 0
+var url: String = "https://api.testnet.solana.com"
 
 
 signal error(error_code: String, error_description: String)
@@ -35,7 +35,15 @@ func _get_property_list():
 	if enable_minimum_context_slot:
 		property_usage = PROPERTY_USAGE_DEFAULT
 
-	return [{
+	return [
+	{
+		"name": "url",
+		"type": TYPE_STRING,
+		"usage": PROPERTY_USAGE_DEFAULT,
+		"hint": PROPERTY_HINT_ENUM_SUGGESTION,
+		"hint_string": "https://api.testnet.solana.com,https://api.devnet.solana.com,https://api.mainnet.solana.com,http://localhost:8899"
+	},
+	{
 		"name": "minimum_context_slot",
 		"type": TYPE_INT,
 		"usage": property_usage,
