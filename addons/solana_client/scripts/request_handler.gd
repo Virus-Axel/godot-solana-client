@@ -1,6 +1,8 @@
 @tool
+@icon("res://addons/solana_client/icon.png")
+
 extends HTTPRequest
-class_name SolanaClient
+
 
 const HTTP_HEADERS: PackedStringArray = ["Content-Type: application/json", "Accept-Encoding: json"]
 const MAX_GODOT_INT: int = 9223372036854775807
@@ -8,9 +10,30 @@ const MAX_GODOT_INT: int = 9223372036854775807
 @export var url: String = "https://api.testnet.solana.com"
 @export var commitment: String = "finalized"
 
+@export var enable_minimum_context_slot := false:
+	set(value):
+		enable_minimum_context_slot = value
+		notify_property_list_changed()
+
+var minimum_context_slot: int = 0
+
+
 var unique_id: int = 0
 
 signal error(error_code: String, error_description: String)
+
+func _get_property_list():
+	var property_usage = PROPERTY_USAGE_NO_EDITOR
+
+	if enable_minimum_context_slot:
+		property_usage = PROPERTY_USAGE_DEFAULT
+
+	return [{
+		"name": "minimum_context_slot",
+		"type": TYPE_INT,
+		"usage": property_usage,
+		"hint": PROPERTY_HINT_NONE,
+	}]
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
