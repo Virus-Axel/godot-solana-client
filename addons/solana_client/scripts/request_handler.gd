@@ -1,6 +1,8 @@
 @tool
+@icon("res://addons/solana_client/icon.png")
+
 extends HTTPRequest
-class_name SolanaClient
+
 
 const HTTP_HEADERS: PackedStringArray = ["Content-Type: application/json", "Accept-Encoding: json"]
 const MAX_GODOT_INT: int = 9223372036854775807
@@ -8,9 +10,30 @@ const MAX_GODOT_INT: int = 9223372036854775807
 @export var url: String = "https://api.testnet.solana.com"
 @export var commitment: String = "finalized"
 
+@export var enable_minimum_context_slot := false:
+	set(value):
+		enable_minimum_context_slot = value
+		notify_property_list_changed()
+
+var minimum_context_slot: int = 0
+
+
 var unique_id: int = 0
 
 signal error(error_code: String, error_description: String)
+
+func _get_property_list():
+	var property_usage = PROPERTY_USAGE_NO_EDITOR
+
+	if enable_minimum_context_slot:
+		property_usage = PROPERTY_USAGE_DEFAULT
+
+	return [{
+		"name": "minimum_context_slot",
+		"type": TYPE_INT,
+		"usage": property_usage,
+		"hint": PROPERTY_HINT_INT_IS_OBJECTID,
+	}]
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -18,14 +41,14 @@ func _ready():
 	unique_id = random_number[0]
 	#print(await get_block_height())
 	#print(await get_balance("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
-	#print(await get_account_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
+	print(await get_account_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
 	#print(await get_block_production("finalized", "", 186173845, 186173846))
 	#print(await get_block_commitment(7))
 	#print(await get_blocks(124091904, 124091904 + 100))
 	#print(await get_blocks_with_limit(799279, 200))
 	#print(await get_block_time(146295254))
 	#print(await get_cluster_nodes())
-	print(await get_epoch_info())
+	#print(await get_epoch_info())
 
 
 func parse_response_data(data: Array) -> Variant:
@@ -120,6 +143,7 @@ func create_request_body(method: String, params: Array) -> String:
 		"params": params,
 	}
 	var body: String = JSON.new().stringify(dict)
+	
 	return body
 
 
@@ -130,6 +154,8 @@ func get_account_info(account: String, data_offset: int = 0, data_length: int = 
 	}
 	if data_offset != 0 or data_length != MAX_GODOT_INT:
 		config.merge({"dataSlice": {"offset": data_offset, "length": data_length}})
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
 	
 	return await send_rpc_request("getAccountInfo", [account, config])
 
@@ -138,6 +164,9 @@ func get_balance(account: String) -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment
 	}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
+		
 	return await send_rpc_request("getBalance", [account, config])
 
 
@@ -145,6 +174,9 @@ func get_block_height() -> Variant:
 	var config: Dictionary = {
 		"commitment": commitment
 	}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
+
 	return await send_rpc_request("getBlockHeight", [config])
 
 
@@ -197,6 +229,9 @@ func get_cluster_nodes() -> Variant:
 
 func get_epoch_info() -> Variant:
 	var config: Dictionary = {"commitment": commitment}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
+		
 	return await send_rpc_request("getEpochInfo", [config])
 
 
@@ -205,6 +240,10 @@ func get_epoch_schedule() -> Variant:
 
 
 func get_fee_for_message(message: String, is_message_encoded := true) -> Variant:
+	var config: Dictionary = {"commitment": commitment}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
+		
 	if not is_message_encoded:
 		return await send_rpc_request("getFeeForMessage", [bs64.encode(message.to_utf8_buffer())])
 	else:
@@ -243,8 +282,11 @@ func get_inflation_reward(query_addresses: Array = [], epoch: int = -1) -> Varia
 	var config: Dictionary = {
 		"commitment": commitment
 	}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
 	if epoch != -1:
 		config.merge({"epoch": epoch})
+
 	if query_addresses.is_empty():
 		return await send_rpc_request("getInflationReward", [config])
 	else:
@@ -262,11 +304,15 @@ func get_largest_accounts(filter: String = "") -> Variant:
 
 
 func get_latest_blockhash() -> Variant:
-	return await send_rpc_request("getLatestBlockhash", [{"commitment": commitment}])
+	var config: Dictionary = {"commitment": commitment}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
+		
+	return await send_rpc_request("getLatestBlockhash", [config])
 
 
 func get_leader_schedule(identity: String = "", slot: int = -1) -> Variant:
-	var config = {"commitment": commitment}
+	var config: Dictionary = {"commitment": commitment}
 	if identity != "":
 		config.merge({"identity": identity})
 	
@@ -296,8 +342,12 @@ func get_multiple_accounts(accounts: Array = [], offset: int = 0, length: int = 
 		"commitment": commitment,
 		"encoding": "base64",
 	}
+	
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
 	if length != MAX_GODOT_INT or offset != 0:
 		config.merge({"dataSlice": {"offset": offset, "length": length}})
+
 	if accounts.is_empty():
 		return await send_rpc_request("getMultipleAccounts", [config])
 	else:
@@ -309,6 +359,9 @@ func get_program_accounts(program_id: String, filters: Array = [], offset: int =
 		"commitment": commitment,
 		"encoding": "base64",
 	}
+	
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
 	if length != MAX_GODOT_INT or offset != 0:
 		config.merge({"dataSlice": {"offset": offset, "length": length}})
 	if filters:
@@ -333,6 +386,9 @@ func get_signatures_for_address(account: String, limit: int = 1000, before: Stri
 		"commitment": commitment,
 		"limit": limit,
 	}
+	
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
 	if not before.is_empty():
 		config.merge({"before": before})
 	if not until.is_empty():
@@ -349,11 +405,19 @@ func get_signature_statuses(signatures: Array = [], search_transaction_history :
 
 
 func get_slot() -> Variant:
-	return await send_rpc_request("getSlot", [{"commitment": commitment}])
+	var config: Dictionary = {"commitment": commitment}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
+		
+	return await send_rpc_request("getSlot", [config])
 
 
 func get_slot_leader() -> Variant:
-	return await send_rpc_request("getSlotLeader", [{"commitment": commitment}])
+	var config: Dictionary = {"commitment": commitment}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
+		
+	return await send_rpc_request("getSlotLeader", [config])
 
 
 func get_slot_leaders(start_slot: int = -1, limit: int = 10) -> Variant:
@@ -364,10 +428,13 @@ func get_slot_leaders(start_slot: int = -1, limit: int = 10) -> Variant:
 
 
 func get_stake_activation(stake_account: String, epoch: int = -1) -> Variant:
+	var config: Dictionary = {"commitment": commitment}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
 	if epoch != -1:
-		return await send_rpc_request("getStakeActivation", [stake_account, {"commitment": commitment, "epoch": epoch}])
-	else:
-		return await send_rpc_request("getStakeActivation", [stake_account, {"commitment": commitment}])
+		config.merge({"epoch": epoch})
+		
+	return await send_rpc_request("getStakeActivation", [stake_account, config])
 
 
 func get_stake_minimum_delegation() -> Variant:
@@ -382,38 +449,42 @@ func get_token_account_balance(token_account: String) -> Variant:
 	return await send_rpc_request("getTokenAccountBalance", [token_account, {"commitment": commitment}])
 
 
-func create_filter(offset: int = -1, match_data: String = "", encoded: bool = true, data_size: int = -1):
-	var ret: Dictionary = {}
-	
-	if offset != -1:
-		var encoded_data = match_data
-		if not encoded:
-			encoded_data = bs64.encode(match_data.to_utf8_buffer())
-		ret.merge({"memcmp": {
-			"offset": offset,
-			"bytes": encoded_data,
-			"encoding": "base64",
-		}})
-	
-	if data_size != -1:
-		ret.merge({"dataSize": data_size})
-	
-	return ret
-
-
-func get_token_accounts_by_owner(deligate_account: String, mint_account: String = "", program_id: String = "", offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
+func get_token_accounts_by_delegate(deligate_account: String, mint_account: String = "", program_id: String = "", offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
 	var arg1: Dictionary = {}
 	var arg2: Dictionary = {
 		"commitment": commitment,
 		"encoding": "base64",
 	}
+
+	if enable_minimum_context_slot:
+		arg2.merge({"minContextSlot": minimum_context_slot})
 	if not mint_account.is_empty():
 		arg1 = {"mint": mint_account}
 	if not program_id.is_empty():
 		arg1.merge({"programId": program_id})
 	if length != MAX_GODOT_INT or offset != 0:
 		arg2.merge({"dataSlice": {"offset": offset, "length": length}})
-	return await send_rpc_request("getTokenAccountsByOwner", [deligate_account, arg1, arg2])
+		
+	return await send_rpc_request("getTokenAccountsByDelegate", [deligate_account, arg1, arg2])
+
+
+func get_token_accounts_by_owner(owner_account: String, mint_account: String = "", program_id: String = "", offset: int = 0, length: int = MAX_GODOT_INT) -> Variant:
+	var arg1: Dictionary = {}
+	var arg2: Dictionary = {
+		"commitment": commitment,
+		"encoding": "base64",
+	}
+
+	if enable_minimum_context_slot:
+		arg2.merge({"minContextSlot": minimum_context_slot})
+	if not mint_account.is_empty():
+		arg1 = {"mint": mint_account}
+	if not program_id.is_empty():
+		arg1.merge({"programId": program_id})
+	if length != MAX_GODOT_INT or offset != 0:
+		arg2.merge({"dataSlice": {"offset": offset, "length": length}})
+		
+	return await send_rpc_request("getTokenAccountsByOwner", [owner, arg1, arg2])
 
 
 func get_token_largest_accounts(token_mint: String) -> Variant:
@@ -432,7 +503,11 @@ func get_transaction(token_mint: String, max_supported_transaction_version: int 
 
 
 func get_transaction_count() -> Variant:
-	return await send_rpc_request("getTransactionCount", [{"commitment": commitment}])
+	var config: Dictionary = {"commitment": commitment}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
+		
+	return await send_rpc_request("getTransactionCount", [config])
 
 
 func get_version() -> Variant:
@@ -448,11 +523,16 @@ func get_vote_accounts(vote_pubkey: String = "", keep_unstaked_delinquents = fal
 		config.merge({"votePubkey": vote_pubkey})
 	if delinquent_slot_distance != -1:
 		config.merge({"delinquentSlotDistance": delinquent_slot_distance})
+		
 	return await send_rpc_request("getVoteAccounts", [config])
 
 
 func is_blockhash_valid() -> Variant:
-	return await send_rpc_request("isBlockhashValid", [{"commitment": commitment}])
+	var config: Dictionary = {"commitment": commitment}
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
+		
+	return await send_rpc_request("isBlockhashValid", [config])
 
 
 func minimum_ledger_slot() -> Variant:
@@ -470,11 +550,16 @@ func send_transaction(transaction: String, encoded := true, skip_preflight := fa
 		"skipPreflight": skip_preflight,
 		"preflight_commitment": preflight_commitment,
 	}
+	
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
 	if max_retries != -1:
 		config.merge({"maxRetries": max_retries})
+		
 	var encoded_transaction: String = transaction
 	if not encoded:
 		encoded_transaction = bs64.encode(transaction.to_utf8_buffer())
+		
 	return await send_rpc_request("sendTransaction", [encoded_transaction, config])
 
 
@@ -485,6 +570,9 @@ func simulate_transaction(transaction: String, encoded := true, sig_verify := fa
 		"replaceRecentBlockhash": replace_recent_blockhash,
 		"encoding": "base64",
 	}
+	
+	if enable_minimum_context_slot:
+		config.merge({"minContextSlot": minimum_context_slot})
 	if return_accounts:
 		config.merge({
 			"accounts": {
@@ -504,8 +592,20 @@ func get_commitment() -> String:
 	return commitment
 
 
-# TODO: Remove before release
-func _on_error(error_code, error_description):
-	print("Error: ", error_code)
-	print(error_description)
-	pass # Replace with function body.
+func create_filter(offset: int = -1, match_data: String = "", encoded: bool = true, data_size: int = -1):
+	var ret: Dictionary = {}
+	
+	if offset != -1:
+		var encoded_data = match_data
+		if not encoded:
+			encoded_data = bs64.encode(match_data.to_utf8_buffer())
+		ret.merge({"memcmp": {
+			"offset": offset,
+			"bytes": encoded_data,
+			"encoding": "base64",
+		}})
+	
+	if data_size != -1:
+		ret.merge({"dataSize": data_size})
+	
+	return ret
