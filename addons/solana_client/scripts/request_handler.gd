@@ -9,7 +9,7 @@ const MAX_GODOT_INT: int = 9223372036854775807
 
 
 @export var unique_id: int = 0
-@export var commitment: String = "finalized"
+var commitment: String = "finalized"
 
 @export var synchronous := true:
 	set(value):
@@ -36,6 +36,13 @@ func _get_property_list():
 		property_usage = PROPERTY_USAGE_DEFAULT
 
 	return [
+	{
+		"name": "commitment",
+		"type": TYPE_STRING,
+		"usage": PROPERTY_USAGE_DEFAULT,
+		"hint": PROPERTY_HINT_ENUM,
+		"hint_string": "processed,confirmed,finalized"
+	},
 	{
 		"name": "url",
 		"type": TYPE_STRING,
