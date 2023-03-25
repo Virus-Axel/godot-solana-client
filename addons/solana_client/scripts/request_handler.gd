@@ -8,7 +8,7 @@ const HTTP_HEADERS: PackedStringArray = ["Content-Type: application/json", "Acce
 const MAX_GODOT_INT: int = 9223372036854775807
 
 
-@export var unique_id: int
+@export var unique_id: int = 0
 @export var commitment: String = "finalized"
 
 @export var synchronous := true:
