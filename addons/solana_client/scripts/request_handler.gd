@@ -7,20 +7,27 @@ extends HTTPRequest
 const HTTP_HEADERS: PackedStringArray = ["Content-Type: application/json", "Accept-Encoding: json"]
 const MAX_GODOT_INT: int = 9223372036854775807
 
+
+@export var unique_id: int
 @export var url: String = "https://api.testnet.solana.com"
 @export var commitment: String = "finalized"
+
+@export var synchronous := true:
+	set(value):
+		synchronous = value
+		toggle_connect_response()
 
 @export var enable_minimum_context_slot := false:
 	set(value):
 		enable_minimum_context_slot = value
 		notify_property_list_changed()
 
+
 var minimum_context_slot: int = 0
 
 
-var unique_id: int = 0
-
 signal error(error_code: String, error_description: String)
+signal rpc_response(request_id: int, value: Variant)
 
 func _get_property_list():
 	var property_usage = PROPERTY_USAGE_NO_EDITOR
@@ -41,7 +48,7 @@ func _ready():
 	unique_id = random_number[0]
 	#print(await get_block_height())
 	#print(await get_balance("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
-	print(await get_account_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
+	#print(await get_account_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
 	#print(await get_block_production("finalized", "", 186173845, 186173846))
 	#print(await get_block_commitment(7))
 	#print(await get_blocks(124091904, 124091904 + 100))
@@ -50,6 +57,19 @@ func _ready():
 	#print(await get_cluster_nodes())
 	#print(await get_epoch_info())
 
+
+func increment_unique_id():
+	if unique_id == MAX_GODOT_INT:
+		unique_id = 0
+	else:
+		unique_id += 1
+
+
+func toggle_connect_response():
+	if synchronous:
+		request_completed.disconnect(Callable(self, "handle_asynchronous_response"))
+	else:
+		request_completed.connect(Callable(self, "handle_asynchronous_response"))
 
 func parse_response_data(data: Array) -> Variant:
 	if data.is_empty():
@@ -106,7 +126,6 @@ func parse_response_data(data: Array) -> Variant:
 		json.parse(response_body.get_string_from_utf8())
 		
 		var response_data: Dictionary = json.get_data()
-		print(response_data)
 		
 		# Validate response data
 		if response_data.has("error"):
@@ -114,10 +133,13 @@ func parse_response_data(data: Array) -> Variant:
 		elif not response_data.has("result"):
 			emit_signal("error", "INTERNAL", "Unexpected response data.")
 		elif typeof(response_data['result']) != TYPE_DICTIONARY:
+			emit_signal("rpc_response", response_data['id'], response_data['result'])
 			return response_data['result']
 		elif not response_data['result'].has("value"):
+			emit_signal("rpc_response", response_data['id'], response_data['result'])
 			return response_data['result']
 		else:
+			emit_signal("rpc_response", response_data['id'], response_data['result']['value'])
 			return response_data['result']['value']
 
 	# Error paths end up here, return empty Dictionary
@@ -126,13 +148,17 @@ func parse_response_data(data: Array) -> Variant:
 
 func send_rpc_request(method: String, params: Array) -> Variant:
 	var body: String = create_request_body(method, params)
-	print(body)
 
 	var error = request(url, HTTP_HEADERS, HTTPClient.METHOD_POST, body)
 	if error != OK:
 		push_error("An error occurred in the HTTP request.")
-		
-	return parse_response_data(await request_completed)
+	
+	increment_unique_id()
+	
+	if synchronous:
+		return parse_response_data(await request_completed)
+	else:
+		return null
 
 
 func create_request_body(method: String, params: Array) -> String:
@@ -590,6 +616,10 @@ func set_commitment(new_commitment: String) -> void:
 
 func get_commitment() -> String:
 	return commitment
+
+
+func handle_asynchronous_response(result, response_code, headers, body) -> void:
+	parse_response_data([result, response_code, headers, body])
 
 
 func create_filter(offset: int = -1, match_data: String = "", encoded: bool = true, data_size: int = -1):
