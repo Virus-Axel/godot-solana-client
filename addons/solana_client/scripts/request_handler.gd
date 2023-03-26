@@ -11,10 +11,7 @@ const MAX_GODOT_INT: int = 9223372036854775807
 @export var unique_id: int = 0
 var commitment: String = "finalized"
 
-@export var synchronous := true:
-	set(value):
-		synchronous = value
-		toggle_connect_response()
+@export var synchronous := true
 
 @export var enable_minimum_context_slot := false:
 	set(value):
@@ -61,6 +58,8 @@ func _get_property_list():
 func _ready():
 	var random_number: PackedInt64Array = rand_from_seed(Time.get_unix_time_from_system())
 	unique_id = random_number[0]
+	
+	request_completed.connect(Callable(self, "handle_asynchronous_response"))
 	#print(await get_block_height())
 	#print(await get_balance("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
 	#print(await get_account_info("6WEPfubN443TJ4tr8z2SsP8f3o1eXRzn4Wv2X2ykY4JX"))
@@ -79,12 +78,6 @@ func increment_unique_id():
 	else:
 		unique_id += 1
 
-
-func toggle_connect_response():
-	if synchronous:
-		request_completed.disconnect(Callable(self, "handle_asynchronous_response"))
-	else:
-		request_completed.connect(Callable(self, "handle_asynchronous_response"))
 
 func parse_response_data(data: Array) -> Variant:
 	if data.is_empty():
@@ -634,7 +627,8 @@ func get_commitment() -> String:
 
 
 func handle_asynchronous_response(result, response_code, headers, body) -> void:
-	parse_response_data([result, response_code, headers, body])
+	if not synchronous:
+		parse_response_data([result, response_code, headers, body])
 
 
 func create_filter(offset: int = -1, match_data: String = "", encoded: bool = true, data_size: int = -1):
