@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3 uid="uid://cxduodmcdhy7y"]
+
+[ext_resource type="Script" path="res://test.gd" id="1_ejqn4"]
+[ext_resource type="Script" path="res://addons/solana_client/scripts/request_handler.gd" id="2_go8n8"]
+
+[node name="test" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ejqn4")
+
+[node name="SolanaClient" type="HTTPRequest" parent="."]
+use_threads = true
+script = ExtResource("2_go8n8")
+unique_id = 2079950893
+commitment = "finalized"
+url = "https://api.testnet.solana.com"
+minimum_context_slot = 0
+
+[connection signal="error" from="SolanaClient" to="." method="error"]
