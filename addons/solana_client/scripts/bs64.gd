@@ -8,7 +8,26 @@ const mapping := [
 ]
 
 static func encode(bytes: PackedByteArray) -> String:
-	return ""
+	var r: String = ""; 
+	var p: String = ""; 
+
+	var c = bytes.size() % 3;
+
+	if c > 0:
+		for i in range(c, 3):
+			p += '='; 
+			bytes.append(0); 
+
+	for i in range(0, bytes.size(), 3):
+		var n = (bytes[i] << 16) + (bytes[i + 1] << 8) + bytes[i + 2]
+
+		r += mapping[(n >> 18) & 63]
+		r += mapping[(n >> 12) & 63]
+		r += mapping[(n >> 6) & 63]
+		r += mapping[n & 63];
+
+	return r.substr(0, r.length() - p.length()) + p;
+	
 
 static func decode(str: String) -> PackedByteArray:
 	var ret := PackedByteArray()
